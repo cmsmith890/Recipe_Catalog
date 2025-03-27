@@ -1,0 +1,213 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+public class Ingredient
+{
+    public string Name { get; set; }
+    public string Quantity { get; set; }
+}
+
+public class Recipe
+{
+    public string Title { get; set; }
+    public string Description { get; set; }
+    public List<Ingredient> Ingredients { get; set; }
+    public List<string> Instructions { get; set; }
+    public string Category { get; set; }
+    public int PrepTimeMinutes { get; set; }
+    public int CookTimeMinutes { get; set; }
+
+    public Recipe(string title)
+    {
+        Title = title;
+        Ingredients = new List<Ingredient>();
+        Instructions = new List<string>();
+    }
+
+    public void AddIngredient(string name, string quantity)
+    {
+        Ingredients.Add(new Ingredient { Name = name, Quantity = quantity });
+    }
+
+    public void AddInstruction(string instruction)
+    {
+        Instructions.Add(instruction);
+    }
+
+    public void DisplayRecipe()
+    {
+        Console.WriteLine($"\n--- {Title} ---");
+        Console.WriteLine($"Category: {Category}");
+        Console.WriteLine($"Description: {Description}");
+        Console.WriteLine($"Prep Time: {PrepTimeMinutes} minutes");
+        Console.WriteLine($"Cook Time: {CookTimeMinutes} minutes");
+
+        Console.WriteLine("\nIngredients:");
+        if (Ingredients.Count > 0)
+        {
+            foreach (var ingredient in Ingredients)
+            {
+                Console.WriteLine($"- {ingredient.Name}: {ingredient.Quantity}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("No ingredients listed.");
+        }
+
+        Console.WriteLine("\nInstructions:");
+        if (Instructions.Count > 0)
+        {
+            for (int i = 0; i < Instructions.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {Instructions[i]}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("No instructions listed.");
+        }
+    }
+}
+
+public class RecipeCatalog
+{
+    private List<Recipe> recipes;
+
+    public RecipeCatalog()
+    {
+        recipes = new List<Recipe>();
+    }
+
+    public void AddRecipe(Recipe recipe)
+    {
+        recipes.Add(recipe);
+        Console.WriteLine($"Recipe '{recipe.Title}' added to the catalog.");
+    }
+
+    public void RemoveRecipe(string title)
+    {
+        Recipe recipeToRemove = recipes.FirstOrDefault(r => r.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (recipeToRemove != null)
+        {
+            recipes.Remove(recipeToRemove);
+            Console.WriteLine($"Recipe '{title}' removed from the catalog.");
+        }
+        else
+        {
+            Console.WriteLine($"Recipe '{title}' not found in the catalog.");
+        }
+    }
+
+    public Recipe FindRecipe(string title)
+    {
+        return recipes.FirstOrDefault(r => r.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public List<Recipe> SearchRecipes(string keyword)
+    {
+        keyword = keyword.ToLower();
+        return recipes.Where(r =>
+            r.Title.ToLower().Contains(keyword) ||
+            (r.Description != null && r.Description.ToLower().Contains(keyword)) ||
+            r.Ingredients.Any(i => i.Name.ToLower().Contains(keyword)) ||
+            r.Instructions.Any(i => i.ToLower().Contains(keyword)) ||
+            r.Category.ToLower().Contains(keyword)
+        ).ToList();
+    }
+
+    public void DisplayAllRecipes()
+    {
+        if (recipes.Count > 0)
+        {
+            Console.WriteLine("\n--- All Recipes in Catalog ---");
+            foreach (var recipe in recipes)
+            {
+                Console.WriteLine($"- {recipe.Title}");
+            }
+            Console.WriteLine("-------------------------------\n");
+        }
+        else
+        {
+            Console.WriteLine("The recipe catalog is empty.");
+        }
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        RecipeCatalog catalog = new RecipeCatalog();
+
+        // Add some recipes
+        Recipe pasta = new Recipe("Spaghetti Carbonara");
+        pasta.Category = "Italian";
+        pasta.Description = "Classic Italian pasta dish with eggs, cheese, pancetta, and black pepper.";
+        pasta.PrepTimeMinutes = 10;
+        pasta.CookTimeMinutes = 15;
+        pasta.AddIngredient("Spaghetti", "200g");
+        pasta.AddIngredient("Eggs", "2 large");
+        pasta.AddIngredient("Pecorino Romano cheese", "50g, grated");
+        pasta.AddIngredient("Guanciale (or Pancetta)", "100g, diced");
+        pasta.AddIngredient("Black pepper", "Freshly ground");
+        pasta.AddInstruction("Cook spaghetti according to package directions.");
+        pasta.AddInstruction("While pasta cooks, whisk eggs and cheese in a bowl. Season generously with black pepper.");
+        pasta.AddInstruction("Cook guanciale in a pan until crispy.");
+        pasta.AddInstruction("Drain pasta, reserving some pasta water. Add pasta to the pan with guanciale.");
+        pasta.AddInstruction("Remove pan from heat and quickly pour in the egg mixture, tossing constantly. Add pasta water if needed to create a creamy sauce.");
+        catalog.AddRecipe(pasta);
+
+        Recipe salad = new Recipe("Caprese Salad");
+        salad.Category = "Salad";
+        salad.Description = "Simple and refreshing Italian salad.";
+        salad.PrepTimeMinutes = 5;
+        salad.CookTimeMinutes = 0;
+        salad.AddIngredient("Fresh mozzarella cheese", "200g, sliced");
+        salad.AddIngredient("Ripe tomatoes", "2 large, sliced");
+        salad.AddIngredient("Fresh basil leaves", "A handful");
+        salad.AddIngredient("Extra virgin olive oil", "To drizzle");
+        salad.AddIngredient("Balsamic glaze (optional)", "To drizzle");
+        salad.AddInstruction("Arrange mozzarella and tomato slices on a plate.");
+        salad.AddInstruction("Tuck basil leaves between the slices.");
+        salad.AddInstruction("Drizzle with olive oil and balsamic glaze (if using).");
+        catalog.AddRecipe(salad);
+
+        // Display all recipes
+        catalog.DisplayAllRecipes();
+
+        // Find a recipe
+        string searchTitle = "Spaghetti Carbonara";
+        Recipe foundRecipe = catalog.FindRecipe(searchTitle);
+        if (foundRecipe != null)
+        {
+            Console.WriteLine($"\nFound recipe: {foundRecipe.Title}");
+            foundRecipe.DisplayRecipe();
+        }
+        else
+        {
+            Console.WriteLine($"\nRecipe '{searchTitle}' not found.");
+        }
+
+        // Search for recipes
+        string searchKeyword = "cheese";
+        List<Recipe> searchResults = catalog.SearchRecipes(searchKeyword);
+        if (searchResults.Count > 0)
+        {
+            Console.WriteLine($"\nRecipes containing '{searchKeyword}':");
+            foreach (var recipe in searchResults)
+            {
+                Console.WriteLine($"- {recipe.Title}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"\nNo recipes found containing '{searchKeyword}'.");
+        }
+
+        // Remove a recipe
+        catalog.RemoveRecipe("Caprese Salad");
+        catalog.DisplayAllRecipes();
+    }
+}
