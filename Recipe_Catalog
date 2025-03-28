@@ -1,213 +1,280 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using System.ComponentModel.DataAnnotations;
 
-public class Ingredient
+// Recipe.cs (Model)
+namespace RecipeApp.Models
 {
-    public string Name { get; set; }
-    public string Quantity { get; set; }
-}
-
-public class Recipe
-{
-    public string Title { get; set; }
-    public string Description { get; set; }
-    public List<Ingredient> Ingredients { get; set; }
-    public List<string> Instructions { get; set; }
-    public string Category { get; set; }
-    public int PrepTimeMinutes { get; set; }
-    public int CookTimeMinutes { get; set; }
-
-    public Recipe(string title)
+    public class Recipe
     {
-        Title = title;
-        Ingredients = new List<Ingredient>();
-        Instructions = new List<string>();
-    }
+        public int Id { get; set; }
 
-    public void AddIngredient(string name, string quantity)
-    {
-        Ingredients.Add(new Ingredient { Name = name, Quantity = quantity });
-    }
+        [Required]
+        public string Title { get; set; }
 
-    public void AddInstruction(string instruction)
-    {
-        Instructions.Add(instruction);
-    }
+        [Required]
+        public string Description { get; set; }
 
-    public void DisplayRecipe()
-    {
-        Console.WriteLine($"\n--- {Title} ---");
-        Console.WriteLine($"Category: {Category}");
-        Console.WriteLine($"Description: {Description}");
-        Console.WriteLine($"Prep Time: {PrepTimeMinutes} minutes");
-        Console.WriteLine($"Cook Time: {CookTimeMinutes} minutes");
+        [Required]
+        public string Ingredients { get; set; }
 
-        Console.WriteLine("\nIngredients:");
-        if (Ingredients.Count > 0)
-        {
-            foreach (var ingredient in Ingredients)
-            {
-                Console.WriteLine($"- {ingredient.Name}: {ingredient.Quantity}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("No ingredients listed.");
-        }
+        [Required]
+        public string Instructions { get; set; }
 
-        Console.WriteLine("\nInstructions:");
-        if (Instructions.Count > 0)
-        {
-            for (int i = 0; i < Instructions.Count; i++)
-            {
-                Console.WriteLine($"{i + 1}. {Instructions[i]}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("No instructions listed.");
-        }
+        [Required]
+        public string Category { get; set; }
+        public DateTime DateAdded { get; set; } = DateTime.Now; // Default to current time
     }
 }
 
-public class RecipeCatalog
+// RecipeService.cs (Service)
+namespace RecipeApp.Services
 {
-    private List<Recipe> recipes;
+    using RecipeApp.Models;
 
-    public RecipeCatalog()
+    public class RecipeService
     {
-        recipes = new List<Recipe>();
-    }
-
-    public void AddRecipe(Recipe recipe)
-    {
-        recipes.Add(recipe);
-        Console.WriteLine($"Recipe '{recipe.Title}' added to the catalog.");
-    }
-
-    public void RemoveRecipe(string title)
-    {
-        Recipe recipeToRemove = recipes.FirstOrDefault(r => r.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
-        if (recipeToRemove != null)
+        private List<Recipe> recipes = new List<Recipe>();
+        private int nextId = 1;
+        public RecipeService()
         {
-            recipes.Remove(recipeToRemove);
-            Console.WriteLine($"Recipe '{title}' removed from the catalog.");
+            // Sample data for initial display.
+            AddRecipe(new Recipe { Title = "Pancakes", Description = "Fluffy breakfast pancakes.", Ingredients = "Flour, milk, eggs, sugar.", Instructions = "Mix ingredients, cook on griddle.", Category = "Breakfast" });
+            AddRecipe(new Recipe { Title = "Spaghetti Bolognese", Description = "Classic Italian pasta dish.", Ingredients = "Pasta, ground beef, tomatoes, onions.", Instructions = "Cook pasta, prepare sauce, combine.", Category = "Dinner" });
+            AddRecipe(new Recipe { Title = "Chocolate Cake", Description = "Delicious chocolate dessert.", Ingredients = "Flour, cocoa powder, sugar, eggs.", Instructions = "Bake ingredients, frost the cake.", Category = "Dessert" });
         }
-        else
+
+        public List<Recipe> GetRecipes()
         {
-            Console.WriteLine($"Recipe '{title}' not found in the catalog.");
+            return recipes;
         }
-    }
 
-    public Recipe FindRecipe(string title)
-    {
-        return recipes.FirstOrDefault(r => r.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
-    }
-
-    public List<Recipe> SearchRecipes(string keyword)
-    {
-        keyword = keyword.ToLower();
-        return recipes.Where(r =>
-            r.Title.ToLower().Contains(keyword) ||
-            (r.Description != null && r.Description.ToLower().Contains(keyword)) ||
-            r.Ingredients.Any(i => i.Name.ToLower().Contains(keyword)) ||
-            r.Instructions.Any(i => i.ToLower().Contains(keyword)) ||
-            r.Category.ToLower().Contains(keyword)
-        ).ToList();
-    }
-
-    public void DisplayAllRecipes()
-    {
-        if (recipes.Count > 0)
+        public Recipe GetRecipe(int id)
         {
-            Console.WriteLine("\n--- All Recipes in Catalog ---");
-            foreach (var recipe in recipes)
+            return recipes.FirstOrDefault(r => r.Id == id);
+        }
+
+        public void AddRecipe(Recipe recipe)
+        {
+            recipe.Id = nextId++;
+            recipes.Add(recipe);
+        }
+
+        public void UpdateRecipe(Recipe recipe)
+        {
+            var existingRecipe = recipes.FirstOrDefault(r => r.Id == recipe.Id);
+            if (existingRecipe != null)
             {
-                Console.WriteLine($"- {recipe.Title}");
+                existingRecipe.Title = recipe.Title;
+                existingRecipe.Description = recipe.Description;
+                existingRecipe.Ingredients = recipe.Ingredients;
+                existingRecipe.Instructions = recipe.Instructions;
+                existingRecipe.Category = recipe.Category;
             }
-            Console.WriteLine("-------------------------------\n");
         }
-        else
+
+        public void DeleteRecipe(int id)
         {
-            Console.WriteLine("The recipe catalog is empty.");
+            var recipeToRemove = recipes.FirstOrDefault(r => r.Id == id);
+            if (recipeToRemove != null)
+            {
+                recipes.Remove(recipeToRemove);
+            }
+        }
+
+        public List<string> GetCategories()
+        {
+            return recipes.Select(r => r.Category).Distinct().ToList();
         }
     }
 }
 
-class Program
+// Recipes.razor (Component)
+@page "/recipes"
+@using RecipeApp.Services
+@using RecipeApp.Models
+@inject RecipeService RecipeService
+@inject NavigationManager NavigationManager
+
+<h1>Recipe Catalog</h1>
+
+<button class="btn btn-primary" @onclick="NavigateToAddRecipe">Add Recipe</button>
+
+@if (recipes == null)
 {
-    static void Main(string[] args)
-    {
-        RecipeCatalog catalog = new RecipeCatalog();
-
-        // Add some recipes
-        Recipe pasta = new Recipe("Spaghetti Carbonara");
-        pasta.Category = "Italian";
-        pasta.Description = "Classic Italian pasta dish with eggs, cheese, pancetta, and black pepper.";
-        pasta.PrepTimeMinutes = 10;
-        pasta.CookTimeMinutes = 15;
-        pasta.AddIngredient("Spaghetti", "200g");
-        pasta.AddIngredient("Eggs", "2 large");
-        pasta.AddIngredient("Pecorino Romano cheese", "50g, grated");
-        pasta.AddIngredient("Guanciale (or Pancetta)", "100g, diced");
-        pasta.AddIngredient("Black pepper", "Freshly ground");
-        pasta.AddInstruction("Cook spaghetti according to package directions.");
-        pasta.AddInstruction("While pasta cooks, whisk eggs and cheese in a bowl. Season generously with black pepper.");
-        pasta.AddInstruction("Cook guanciale in a pan until crispy.");
-        pasta.AddInstruction("Drain pasta, reserving some pasta water. Add pasta to the pan with guanciale.");
-        pasta.AddInstruction("Remove pan from heat and quickly pour in the egg mixture, tossing constantly. Add pasta water if needed to create a creamy sauce.");
-        catalog.AddRecipe(pasta);
-
-        Recipe salad = new Recipe("Caprese Salad");
-        salad.Category = "Salad";
-        salad.Description = "Simple and refreshing Italian salad.";
-        salad.PrepTimeMinutes = 5;
-        salad.CookTimeMinutes = 0;
-        salad.AddIngredient("Fresh mozzarella cheese", "200g, sliced");
-        salad.AddIngredient("Ripe tomatoes", "2 large, sliced");
-        salad.AddIngredient("Fresh basil leaves", "A handful");
-        salad.AddIngredient("Extra virgin olive oil", "To drizzle");
-        salad.AddIngredient("Balsamic glaze (optional)", "To drizzle");
-        salad.AddInstruction("Arrange mozzarella and tomato slices on a plate.");
-        salad.AddInstruction("Tuck basil leaves between the slices.");
-        salad.AddInstruction("Drizzle with olive oil and balsamic glaze (if using).");
-        catalog.AddRecipe(salad);
-
-        // Display all recipes
-        catalog.DisplayAllRecipes();
-
-        // Find a recipe
-        string searchTitle = "Spaghetti Carbonara";
-        Recipe foundRecipe = catalog.FindRecipe(searchTitle);
-        if (foundRecipe != null)
-        {
-            Console.WriteLine($"\nFound recipe: {foundRecipe.Title}");
-            foundRecipe.DisplayRecipe();
-        }
-        else
-        {
-            Console.WriteLine($"\nRecipe '{searchTitle}' not found.");
-        }
-
-        // Search for recipes
-        string searchKeyword = "cheese";
-        List<Recipe> searchResults = catalog.SearchRecipes(searchKeyword);
-        if (searchResults.Count > 0)
-        {
-            Console.WriteLine($"\nRecipes containing '{searchKeyword}':");
-            foreach (var recipe in searchResults)
+    <p>Loading recipes...</p>
+}
+else if (!recipes.Any())
+{
+    <p>No recipes found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Date Added</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var recipe in recipes)
             {
-                Console.WriteLine($"- {recipe.Title}");
+                <tr>
+                    <td>@recipe.Title</td>
+                    <td>@recipe.Description</td>
+                    <td>@recipe.Category</td>
+                    <td>@recipe.DateAdded.ToShortDateString()</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => NavigateToEditRecipe(recipe.Id)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteRecipe(recipe.Id)">Delete</button>
+                    </td>
+                </tr>
             }
-        }
-        else
-        {
-            Console.WriteLine($"\nNo recipes found containing '{searchKeyword}'.");
-        }
+        </tbody>
+    </table>
+}
 
-        // Remove a recipe
-        catalog.RemoveRecipe("Caprese Salad");
-        catalog.DisplayAllRecipes();
+@code {
+    private List<Recipe> recipes = new();
+
+    protected override void OnInitialized() => recipes = RecipeService.GetRecipes();
+
+    private void NavigateToAddRecipe() => NavigationManager.NavigateTo("/recipes/add");
+
+    private void NavigateToEditRecipe(int id) => NavigationManager.NavigateTo($"/recipes/edit/{id}");
+
+    private async Task DeleteRecipe(int id)
+    {
+        RecipeService.DeleteRecipe(id);
+        recipes = RecipeService.GetRecipes(); // Ensure re-fetching
+        StateHasChanged(); // Notify Blazor to re-render the component
     }
+}
+
+// AddRecipe.razor (Component)
+@page "/recipes/add"
+@using RecipeApp.Services
+@using RecipeApp.Models
+@inject RecipeService RecipeService
+@inject NavigationManager NavigationManager
+
+<h1>Add Recipe</h1>
+
+<EditForm Model="@recipe" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Title:</label>
+        <InputText @bind-Value="recipe.Title" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Description:</label>
+        <InputText @bind-Value="recipe.Description" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Ingredients:</label>
+        <InputTextArea @bind-Value="recipe.Ingredients" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Instructions:</label>
+        <InputTextArea @bind-Value="recipe.Instructions" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Category:</label>
+        <InputText @bind-Value="recipe.Category" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <button @onclick="NavigateToRecipes" class="btn btn-secondary">Cancel</button>
+</EditForm>
+
+@code {
+    private Recipe recipe = new();
+
+    private void HandleValidSubmit()
+    {
+        RecipeService.AddRecipe(recipe);
+        NavigationManager.NavigateTo("/recipes");
+    }
+
+    private void NavigateToRecipes() => NavigationManager.NavigateTo("/recipes");
+}
+
+// EditRecipe.razor (Component)
+@page "/recipes/edit/{id:int}"
+@using RecipeApp.Services
+@using RecipeApp.Models
+@inject RecipeService RecipeService
+@inject NavigationManager NavigationManager
+
+<h1>Edit Recipe</h1>
+
+@if (recipe != null)
+{
+    <EditForm Model="@recipe" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label>Title:</label>
+            <InputText @bind-Value="recipe.Title" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Description:</label>
+            <InputText @bind-Value="recipe.Description" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Ingredients:</label>
+            <InputTextArea @bind-Value="recipe.Ingredients" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Instructions:</label>
+            <InputTextArea @bind-Value="recipe.Instructions" class="form-control" />
+        </div>
+
+        <div class="form-group">
+            <label>Category:</label>
+            <InputText @bind-Value="recipe.Category" class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button @onclick="NavigateToRecipes" class="btn btn-secondary">Cancel</button>
+    </EditForm>
+}
+else
+{
+    <p>Loading recipe...</p>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Recipe recipe;
+
+    protected override void OnInitialized() => recipe = RecipeService.GetRecipe(Id);
+
+    private void HandleValidSubmit()
+    {
+        RecipeService.UpdateRecipe(recipe);
+        NavigationManager.NavigateTo("/recipes");
+    }
+
+    private void NavigateToRecipes() => NavigationManager.NavigateTo("/recipes");
 }
